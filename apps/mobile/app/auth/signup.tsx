@@ -76,7 +76,10 @@ export default function SignupScreen() {
         )}
       </Pressable>
 
-      <ThemedText type="link" onPress={() => router.back()}>
+      <ThemedText
+        type="link"
+        onPress={() => router.replace("/auth/login" as any)}
+      >
         Back to login →
       </ThemedText>
     </ThemedView>

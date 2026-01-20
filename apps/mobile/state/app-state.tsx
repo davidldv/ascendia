@@ -49,6 +49,8 @@ type AppStateApi = {
   state: AppState;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  startEmailOtp: (email: string) => Promise<void>;
+  verifyEmailOtp: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   setTimezoneIfNeeded: () => Promise<void>;
@@ -215,6 +217,37 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
+  const startEmailOtp = useCallback(async (email: string) => {
+    setError(null);
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+      },
+    });
+    if (error) {
+      setLoading(false);
+      throw error;
+    }
+    setLoading(false);
+  }, []);
+
+  const verifyEmailOtp = useCallback(async (email: string, code: string) => {
+    setError(null);
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: code,
+      type: "email",
+    });
+    if (error) {
+      setLoading(false);
+      throw error;
+    }
+    setLoading(false);
+  }, []);
+
   const signOut = useCallback(async () => {
     setError(null);
     await supabase.auth.signOut();
@@ -295,6 +328,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       state,
       signUp,
       signIn,
+      startEmailOtp,
+      verifyEmailOtp,
       signOut,
       refresh,
       setTimezoneIfNeeded,
@@ -306,6 +341,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       state,
       signUp,
       signIn,
+      startEmailOtp,
+      verifyEmailOtp,
       signOut,
       refresh,
       setTimezoneIfNeeded,

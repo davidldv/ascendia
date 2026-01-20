@@ -22,7 +22,11 @@ export default function RootLayout() {
       <AppStateProvider>
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/login" options={{ title: "Login" }} />
+          <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="auth/email"
+            options={{ title: "Continue with email" }}
+          />
           <Stack.Screen
             name="auth/signup"
             options={{ title: "Create Account" }}

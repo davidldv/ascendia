@@ -19,9 +19,7 @@ export default function ResetPasswordScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">Reset Password</ThemedText>
-      <ThemedText style={styles.dim}>
-        Send a password reset email via Supabase.
-      </ThemedText>
+      <ThemedText style={styles.dim}>We’ll email you a reset link.</ThemedText>
 
       {status ? <ThemedText style={styles.status}>{status}</ThemedText> : null}
       {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
