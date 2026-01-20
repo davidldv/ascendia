@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# vscode
+.vscode/
+
 # Expo
 .expo/
 dist/
@@ -32,6 +35,9 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -39,5 +45,10 @@ yarn-error.*
 app-example
 
 # generated native folders
-/ios
-/android
+ios/
+android/
+**/ios/
+**/android/
+
+# requirements
+ascendia_product_technical_requirements.md

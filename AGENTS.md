@@ -2,7 +2,12 @@
 
 ## Project Overview
 
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+This is a monorepo containing:
+
+- An Expo/React Native mobile application (`apps/mobile`)
+- A Fastify backend API (`apps/api`)
+
+Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
 ## Documentation Resources
 
@@ -26,24 +31,19 @@ These documentation files are specifically formatted for AI agents and should be
 
 ```
 /
-├── app/                   # Expo Router file-based routing
-│   ├── (tabs)/            # Tab-based navigation screens
-│   │   ├── index.tsx      # Home screen
-│   │   ├── explore.tsx    # Explore screen
-│   │   └── _layout.tsx    # Tabs layout
-│   ├── _layout.tsx        # Root layout with theme provider
-│   └── modal.tsx          # Modal screen example
-├── components/            # Reusable React components
-│   ├── ui/                # UI primitives (IconSymbol, Collapsible)
-│   └── ...                # Feature components (themed, haptic, parallax)
-├── constants/             # App-wide constants (theme, colors)
-├── hooks/                 # Custom React hooks (color scheme, theme)
-├── assets/                # Static assets (images, fonts)
-├── scripts/               # Utility scripts (reset-project)
-├── .eas/workflows/        # EAS Workflows (CI/CD automation)
-├── app.json               # Expo configuration
-├── eas.json               # EAS Build/Submit configuration
-└── package.json           # Dependencies and scripts
+├── apps/
+│   ├── mobile/                   # Expo Router app (client)
+│   │   ├── app/                  # Expo Router file-based routing
+│   │   ├── assets/               # Static assets
+│   │   ├── components/           # UI components
+│   │   ├── .eas/workflows/       # EAS Workflows
+│   │   ├── app.json              # Expo config
+│   │   ├── eas.json              # EAS config
+│   │   └── package.json          # Mobile dependencies/scripts
+│   └── api/                      # Fastify backend
+│       ├── src/
+│       └── package.json
+└── package.json                  # Workspace scripts
 ```
 
 ## Essential Commands
@@ -51,21 +51,26 @@ These documentation files are specifically formatted for AI agents and should be
 ### Development
 
 ```bash
-npx expo start                  # Start dev server
-npx expo start --clear          # Clear cache and start dev server
-npx expo install <package>      # Install packages with compatible versions
+npm run mobile:start            # Start Expo dev server
+npm run api:dev                 # Start Fastify API (watch mode)
+
+# If you prefer running inside the mobile workspace:
+cd apps/mobile && npx expo start
+
+npx expo start --clear           # Clear cache and start dev server
+npx expo install <package>       # Install packages with compatible versions
 npx expo install --check        # Check which installed packages need to be updated
 npx expo install --fix          # Automatically update any invalid package versions
-npm run development-builds      # Create development builds (workflow)
-npm run reset-project           # Reset to blank template
+cd apps/mobile && npm run development-builds  # Create development builds (workflow)
+cd apps/mobile && npm run reset-project       # Reset to blank template
 ```
 
 ### Building & Testing
 
 ```bash
 npx expo doctor      # Check project health and dependencies
-npx expo lint        # Run ESLint
-npm run draft        # Publish preview update and website (workflow)
+cd apps/mobile && npx expo lint        # Run ESLint
+cd apps/mobile && npm run draft        # Publish preview update and website (workflow)
 ```
 
 ### Production
@@ -73,7 +78,7 @@ npm run draft        # Publish preview update and website (workflow)
 ```bash
 npx eas-cli@latest build --platform ios -s          # Use EAS to build for iOS platform and submit to App Store
 npx eas-cli@latest build --platform android -s      # Use EAS to build for Android platform and submit to Google Play Store
-npm run deploy                                      # Deploy to production (workflow)
+cd apps/mobile && npm run deploy                    # Deploy to production (workflow)
 ```
 
 ## Development Guidelines
@@ -153,7 +158,6 @@ If there are errors in **Expo Go** or the project is not running, create a **dev
 When working on this project:
 
 1. **Always start by consulting the appropriate documentation**:
-
    - For general Expo questions: https://docs.expo.dev/llms-full.txt
    - For EAS/deployment questions: https://docs.expo.dev/llms-eas.txt
    - For SDK/API questions: https://docs.expo.dev/llms-sdk.txt
