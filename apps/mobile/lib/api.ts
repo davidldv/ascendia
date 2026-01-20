@@ -15,14 +15,22 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const url = `${baseUrl.replace(/\/$/, "")}${path.startsWith("/") ? "" : "/"}${path}`;
 
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      ...(init.headers ?? {}),
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": "application/json",
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers ?? {}),
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      `Cannot reach API at ${baseUrl}. Is apps/api running? (npm run api:dev)\n${message}`,
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");

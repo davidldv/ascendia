@@ -38,6 +38,25 @@ type MissionRow = {
   completed_at: string | null;
 };
 
+function isSchemaMissingError(err: unknown): boolean {
+  return (
+    !!err &&
+    typeof err === "object" &&
+    "code" in err &&
+    // PostgREST error code surfaced via supabase-js
+    (err as any).code === "PGRST205"
+  );
+}
+
+function schemaNotInitializedError() {
+  const err = new Error(
+    "Database schema not initialized. Apply apps/api/db/schema.sql in the Supabase SQL editor, then restart the API.",
+  );
+  // @ts-expect-error fastify statusCode
+  err.statusCode = 503;
+  return err;
+}
+
 async function upsertProfile(params: {
   user: { id: string; email: string | null };
   timezone?: string;
@@ -59,7 +78,10 @@ async function upsertProfile(params: {
     .select("*")
     .single();
 
-  if (error || !data) throw error ?? new Error("Failed to load profile");
+  if (error || !data) {
+    if (isSchemaMissingError(error)) throw schemaNotInitializedError();
+    throw error ?? new Error("Failed to load profile");
+  }
   return data as ProfileRow;
 }
 
@@ -77,7 +99,10 @@ async function getTodayMissions(params: {
     .eq("date_key", params.dateKey)
     .order("created_at", { ascending: true });
 
-  if (existing.error) throw existing.error;
+  if (existing.error) {
+    if (isSchemaMissingError(existing.error)) throw schemaNotInitializedError();
+    throw existing.error;
+  }
 
   if (existing.data && existing.data.length > 0) {
     return existing.data as MissionRow[];
@@ -104,7 +129,10 @@ async function getTodayMissions(params: {
     .eq("date_key", params.dateKey)
     .order("created_at", { ascending: true });
 
-  if (inserted.error) throw inserted.error;
+  if (inserted.error) {
+    if (isSchemaMissingError(inserted.error)) throw schemaNotInitializedError();
+    throw inserted.error;
+  }
   return (inserted.data ?? []) as MissionRow[];
 }
 
@@ -187,6 +215,9 @@ export async function registerRoutes(app: FastifyInstance) {
       .eq("user_id", user.id)
       .single();
 
+    if (current.error && isSchemaMissingError(current.error)) {
+      throw schemaNotInitializedError();
+    }
     if (current.error || !current.data) {
       throw notFound("Mission not found");
     }
@@ -201,16 +232,25 @@ export async function registerRoutes(app: FastifyInstance) {
         .select("*")
         .single();
 
-      if (updated.error) throw updated.error;
+      if (updated.error) {
+        if (isSchemaMissingError(updated.error))
+          throw schemaNotInitializedError();
+        throw updated.error;
+      }
 
       // Increment total missions completed (server-authoritative).
       const currentProfile = await upsertProfile({ user });
-      await supabase
+      const inc = await supabase
         .from("profiles")
         .update({
           total_missions_completed: currentProfile.total_missions_completed + 1,
         })
         .eq("user_id", user.id);
+
+      if (inc.error) {
+        if (isSchemaMissingError(inc.error)) throw schemaNotInitializedError();
+        throw inc.error;
+      }
     }
 
     // Fetch current profile and today's missions.
@@ -224,7 +264,11 @@ export async function registerRoutes(app: FastifyInstance) {
       .eq("date_key", dateKey)
       .order("created_at", { ascending: true });
 
-    if (missions.error) throw missions.error;
+    if (missions.error) {
+      if (isSchemaMissingError(missions.error))
+        throw schemaNotInitializedError();
+      throw missions.error;
+    }
 
     const missionRows = (missions.data ?? []) as MissionRow[];
     const allComplete =
@@ -255,10 +299,12 @@ export async function registerRoutes(app: FastifyInstance) {
           .single();
 
         if (profUpdate.error || !profUpdate.data)
-          throw profUpdate.error ?? new Error("Failed to update profile");
+          throw isSchemaMissingError(profUpdate.error)
+            ? schemaNotInitializedError()
+            : (profUpdate.error ?? new Error("Failed to update profile"));
         profile = profUpdate.data as ProfileRow;
 
-        await supabase.from("progress_log").upsert(
+        const up = await supabase.from("progress_log").upsert(
           {
             user_id: user.id,
             date_key: dateKey,
@@ -267,6 +313,11 @@ export async function registerRoutes(app: FastifyInstance) {
           },
           { onConflict: "user_id,date_key" },
         );
+
+        if (up.error) {
+          if (isSchemaMissingError(up.error)) throw schemaNotInitializedError();
+          throw up.error;
+        }
       }
     }
 
@@ -294,7 +345,10 @@ export async function registerRoutes(app: FastifyInstance) {
       .eq("user_id", user.id)
       .in("date_key", dateKeys);
 
-    if (error) throw error;
+    if (error) {
+      if (isSchemaMissingError(error)) throw schemaNotInitializedError();
+      throw error;
+    }
 
     const byDate: Record<string, { total: number; completed: number }> = {};
     for (const k of dateKeys) byDate[k] = { total: 0, completed: 0 };

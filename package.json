@@ -5,6 +5,7 @@
     "apps/*"
   ],
   "scripts": {
+    "postinstall": "patch-package",
     "mobile:start": "npm --workspace apps/mobile run start",
     "mobile:android": "npm --workspace apps/mobile run android",
     "mobile:ios": "npm --workspace apps/mobile run ios",
@@ -17,5 +18,8 @@
     "api:start": "npm --workspace apps/api run start",
     "api:build": "npm --workspace apps/api run build",
     "lint": "npm run mobile:lint"
+  },
+  "devDependencies": {
+    "patch-package": "^8.0.0"
   }
 }

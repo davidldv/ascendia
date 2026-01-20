@@ -1,4 +1,5 @@
 import { Redirect, router } from "expo-router";
+import { useEffect } from "react";
 import { Pressable, StyleSheet } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
@@ -12,13 +13,45 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const tint = Colors[colorScheme ?? "light"].tint;
 
-  const { state, setTimezoneIfNeeded } = useAppState();
+  const { state, setTimezoneIfNeeded, refresh } = useAppState();
+
+  useEffect(() => {
+    void setTimezoneIfNeeded();
+  }, [setTimezoneIfNeeded]);
 
   if (!state.session) return <Redirect href="/auth/login" />;
+
+  if (state.loading && !state.profile) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText type="title">Loading…</ThemedText>
+        <ThemedText style={styles.dim}>
+          Fetching your profile and missions.
+        </ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (state.error && !state.profile) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText type="title">Can’t load data</ThemedText>
+        <ThemedText style={styles.dim}>{state.error}</ThemedText>
+        <Pressable
+          onPress={() => void refresh()}
+          style={({ pressed }) => [
+            styles.retryButton,
+            { borderColor: tint, opacity: pressed ? 0.85 : 1 },
+          ]}
+        >
+          <ThemedText type="defaultSemiBold">Retry</ThemedText>
+        </Pressable>
+      </ThemedView>
+    );
+  }
+
   if (!state.profile) return null;
   if (!state.profile.archetypeId) return <Redirect href="/onboarding" />;
-
-  void setTimezoneIfNeeded();
 
   const missions = state.missionsToday;
   const completedCount = missions.filter(
@@ -118,6 +151,14 @@ const styles = StyleSheet.create({
   missionRowTop: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+  },
+  retryButton: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     alignItems: "center",
   },
 });

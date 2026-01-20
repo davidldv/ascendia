@@ -33,11 +33,20 @@ function createMemoryStorage(): AsyncStorageLike {
 
 const serverStorage = createMemoryStorage();
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: isWebServer ? serverStorage : AsyncStorage,
-    autoRefreshToken: !isWebServer,
-    persistSession: !isWebServer,
-    detectSessionInUrl: false,
-  },
-});
+type SupabaseClientType = ReturnType<typeof createClient>;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __ascendiaSupabase: SupabaseClientType | undefined;
+}
+
+export const supabase: SupabaseClientType =
+  globalThis.__ascendiaSupabase ??
+  (globalThis.__ascendiaSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storage: isWebServer ? serverStorage : AsyncStorage,
+      autoRefreshToken: !isWebServer,
+      persistSession: !isWebServer,
+      detectSessionInUrl: false,
+    },
+  }));
