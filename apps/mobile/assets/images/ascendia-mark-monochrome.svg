@@ -1,0 +1,8 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Monochrome adaptive icon mark: just the Ascendia "ascent" glyph -->
+  <path
+    d="M256 124C259.4 124 262.4 125.8 263.9 128.8L369.6 341.6C372.2 347 368.2 353.2 362.2 353.2H319.8C316.4 353.2 313.4 351.2 311.9 348.2L293.6 311.6C292.1 308.6 289 306.6 285.6 306.6H226.4C223 306.6 219.9 308.6 218.4 311.6L200.1 348.2C198.6 351.2 195.6 353.2 192.2 353.2H149.8C143.8 353.2 139.8 347 142.4 341.6L248.1 128.8C249.6 125.8 252.6 124 256 124Z"
+    fill="#FFFFFF"/>
+  <path d="M256 168L221 240.4H291L256 168Z" fill="#FFFFFF" fill-opacity="0.22"/>
+  <path d="M208 277.6H304" stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="14" stroke-linecap="round"/>
+</svg>

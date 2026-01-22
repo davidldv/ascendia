@@ -1,0 +1,36 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(170 150) rotate(90) scale(360)">
+      <stop stop-color="#37E7FF" stop-opacity="0.20"/>
+      <stop offset="0.6" stop-color="#05070C" stop-opacity="0.0"/>
+      <stop offset="1" stop-color="#05070C" stop-opacity="0.0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(380 380) rotate(90) scale(340)">
+      <stop stop-color="#8B5CFF" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#05070C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="#05070C"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <rect width="512" height="512" fill="url(#glow2)"/>
+
+  <!-- subtle grid */ -->
+  <g opacity="0.10" stroke="#1B2A44" stroke-width="1">
+    <path d="M64 0V512"/>
+    <path d="M128 0V512"/>
+    <path d="M192 0V512"/>
+    <path d="M256 0V512"/>
+    <path d="M320 0V512"/>
+    <path d="M384 0V512"/>
+    <path d="M448 0V512"/>
+
+    <path d="M0 64H512"/>
+    <path d="M0 128H512"/>
+    <path d="M0 192H512"/>
+    <path d="M0 256H512"/>
+    <path d="M0 320H512"/>
+    <path d="M0 384H512"/>
+    <path d="M0 448H512"/>
+  </g>
+</svg>

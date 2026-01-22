@@ -1,101 +1,119 @@
-import { router } from "expo-router";
-import React, { useState } from "react";
-import { Pressable, StyleSheet, TextInput } from "react-native";
+import { router } from 'expo-router';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { supabase } from "@/lib/supabase";
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { AuthBackground } from '@/components/ui/auth-background';
+import { HudButton } from '@/components/ui/hud-button';
+import { HudInput } from '@/components/ui/hud-input';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordScreen() {
   const colorScheme = useColorScheme();
-  const tint = Colors[colorScheme ?? "light"].tint;
+  const themeName = colorScheme === 'dark' ? 'dark' : 'light';
+  const palette = Colors[themeName];
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">Reset Password</ThemedText>
-      <ThemedText style={styles.dim}>We’ll email you a reset link.</ThemedText>
+    <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }}>
+      <AuthBackground />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
+          style={{ backgroundColor: palette.background }}>
+          <ThemedView className="flex-1 px-5" style={{ backgroundColor: palette.background }}>
+            <View className="w-full max-w-[520px] flex-1 self-center pt-10">
+              <View className="mb-8">
+                <ThemedText
+                  className="text-[28px] font-extrabold"
+                  style={{ color: palette.textStrong }}>
+                  Reset password
+                </ThemedText>
+                <ThemedText className="mt-1.5 text-[13px]" style={{ color: palette.textMuted }}>
+                  We’ll email you a reset link.
+                </ThemedText>
+              </View>
 
-      {status ? <ThemedText style={styles.status}>{status}</ThemedText> : null}
-      {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
+              <View
+                className="rounded-2xl border p-5"
+                style={{ backgroundColor: palette.surface, borderColor: palette.border }}>
+                {status ? (
+                  <View
+                    className="mb-4 rounded-xl border px-3 py-2"
+                    style={{
+                      borderColor: palette.success,
+                      backgroundColor: themeName === 'dark' ? '#061210' : '#E9FFF8',
+                    }}>
+                    <ThemedText className="text-[13px]" style={{ color: palette.success }}>
+                      {status}
+                    </ThemedText>
+                  </View>
+                ) : null}
 
-      <TextInput
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        style={[styles.input, { borderColor: tint }]}
-      />
+                {error ? (
+                  <View
+                    className="mb-4 rounded-xl border px-3 py-2"
+                    style={{
+                      borderColor: palette.error,
+                      backgroundColor: themeName === 'dark' ? '#12060A' : '#FFECEE',
+                    }}>
+                    <ThemedText className="text-[13px]" style={{ color: palette.error }}>
+                      {error}
+                    </ThemedText>
+                  </View>
+                ) : null}
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={async () => {
-          setError(null);
-          setStatus(null);
-          const { error } = await supabase.auth.resetPasswordForEmail(
-            email.trim(),
-          );
-          if (error) {
-            setError(error.message);
-            return;
-          }
-          setStatus("If that email exists, a reset link was sent.");
-        }}
-        style={({ pressed }) => [
-          styles.button,
-          { backgroundColor: tint, borderColor: tint },
-          pressed ? { opacity: 0.85 } : null,
-        ]}
-      >
-        <ThemedText style={[styles.buttonText, { color: "#fff" }]}>
-          Send reset email
-        </ThemedText>
-      </Pressable>
+                <HudInput
+                  label="Email"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  placeholder="you@domain.com"
+                  value={email}
+                  onChangeText={setEmail}
+                />
 
-      <ThemedText type="link" onPress={() => router.back()}>
-        Back →
-      </ThemedText>
-    </ThemedView>
+                <View className="mt-6">
+                  <HudButton
+                    title="Send reset email"
+                    disabled={!email}
+                    onPress={async () => {
+                      setError(null);
+                      setStatus(null);
+                      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+                      if (error) {
+                        setError(error.message);
+                        return;
+                      }
+                      setStatus('If that email exists, a reset link was sent.');
+                    }}
+                  />
+                </View>
+
+                <View className="mt-4 items-center">
+                  <ThemedText
+                    type="link"
+                    className="text-[13px] font-semibold"
+                    onPress={() => router.back()}>
+                    Back →
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
+          </ThemedView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    justifyContent: "center",
-    gap: 12,
-  },
-  dim: {
-    opacity: 0.75,
-  },
-  status: {
-    opacity: 0.9,
-  },
-  error: {
-    color: "#b00020",
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  button: {
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-    borderWidth: 1,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-});

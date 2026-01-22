@@ -1,0 +1,20 @@
+**/node_modules
+**/.next
+**/dist
+**/.expo
+**/.expo-shared
+**/.turbo
+**/.cache
+**/.git
+**/.DS_Store
+**/npm-debug.log
+**/yarn-error.log
+**/*.log
+
+# Mobile native build artifacts
+**/android
+**/ios
+
+# Secrets (use env files instead)
+**/.env
+**/.env.*

@@ -4,6 +4,7 @@ type Env = {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   LEVEL_UP_EVERY_DAYS: number;
+  CRON_SECRET?: string;
 };
 
 function requireEnv(name: string): string {
@@ -18,6 +19,7 @@ export function getEnv(): Env {
     HOST: process.env.HOST ?? "0.0.0.0",
     SUPABASE_URL: requireEnv("SUPABASE_URL"),
     SUPABASE_SERVICE_ROLE_KEY: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
-    LEVEL_UP_EVERY_DAYS: Number(process.env.LEVEL_UP_EVERY_DAYS ?? 7),
+    LEVEL_UP_EVERY_DAYS: Number(process.env.LEVEL_UP_EVERY_DAYS ?? 1),
+    CRON_SECRET: process.env.CRON_SECRET,
   };
 }

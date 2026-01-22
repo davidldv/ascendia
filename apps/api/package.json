@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node --enable-source-maps dist/index.js",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "reconcile:run": "tsx src/cron/reconcile.ts",
+    "reconcile:run:prod": "node --enable-source-maps dist/cron/reconcile.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.1.0",

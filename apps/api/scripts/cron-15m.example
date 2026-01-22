@@ -1,0 +1,5 @@
+# Install with: crontab -e
+#
+# Runs the reconciliation job every 15 minutes.
+# Logs stdout/stderr to /tmp/ascendia-reconcile.log
+*/15 * * * * cd /david/dev/ascendia && sh apps/api/scripts/reconcile-15m.sh >> /tmp/ascendia-reconcile.log 2>&1

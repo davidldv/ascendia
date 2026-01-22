@@ -1,16 +1,24 @@
-import "react-native-url-polyfill/auto";
+import 'react-native-url-polyfill/auto';
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createClient } from "@supabase/supabase-js";
-import { Platform } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl) throw new Error("Missing EXPO_PUBLIC_SUPABASE_URL");
-if (!supabaseAnonKey) throw new Error("Missing EXPO_PUBLIC_SUPABASE_ANON_KEY");
+if (!supabaseUrl) throw new Error('Missing EXPO_PUBLIC_SUPABASE_URL');
+if (!supabaseAnonKey) throw new Error('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY');
 
-const isWebServer = Platform.OS === "web" && typeof window === "undefined";
+const isWebServer = Platform.OS === 'web' && typeof window === 'undefined';
+
+const storageKey = (() => {
+  try {
+    return `ascendia-auth-${new URL(supabaseUrl).hostname}`;
+  } catch {
+    return 'ascendia-auth';
+  }
+})();
 
 type AsyncStorageLike = {
   getItem: (key: string) => Promise<string | null>;
@@ -33,6 +41,17 @@ function createMemoryStorage(): AsyncStorageLike {
 
 const serverStorage = createMemoryStorage();
 
+export const supabaseAuthStorageKey = storageKey;
+
+export async function clearSupabaseAuthStorage(): Promise<void> {
+  try {
+    const storage = isWebServer ? serverStorage : AsyncStorage;
+    await storage.removeItem(storageKey);
+  } catch {
+    // ignore
+  }
+}
+
 type SupabaseClientType = ReturnType<typeof createClient>;
 
 declare global {
@@ -45,6 +64,7 @@ export const supabase: SupabaseClientType =
   (globalThis.__ascendiaSupabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       storage: isWebServer ? serverStorage : AsyncStorage,
+      storageKey,
       autoRefreshToken: !isWebServer,
       persistSession: !isWebServer,
       detectSessionInUrl: false,
