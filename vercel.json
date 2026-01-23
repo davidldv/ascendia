@@ -3,6 +3,6 @@
     "env": {
       "NODE_VERSION": "20"
     },
-    "outputDirectory": "apps/mobile/dist"
+    "command": "npx --workspace=apps/mobile expo export --platform web --output-dir=apps/mobile/dist"
   }
 }
