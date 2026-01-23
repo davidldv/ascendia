@@ -33,6 +33,10 @@
     "production": {
       "channel": "production",
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://ascendia-api.onrender.com",
+        "EXPO_PUBLIC_APP_ENV": "production"
+      },
       "android": {
         "image": "latest"
       },

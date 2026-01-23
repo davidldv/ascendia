@@ -49,12 +49,12 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "e77699d5-e092-46f0-b164-00b27daa6d47"
+        "projectId": "08d3f4d5-1d63-45e4-82d8-c1d7a1c9e6ec"
       }
     },
     "owner": "davidl.on",
     "updates": {
-      "url": "https://u.expo.dev/e77699d5-e092-46f0-b164-00b27daa6d47"
+      "url": "https://u.expo.dev/08d3f4d5-1d63-45e4-82d8-c1d7a1c9e6ec"
     },
     "runtimeVersion": {
       "policy": "appVersion"
