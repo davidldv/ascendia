@@ -14,6 +14,12 @@ Monorepo layout:
 
 - Dev server: `npm run api:dev`
 
+## Deploy API (Render)
+
+- Build command: `npm run render:build`
+- Start command: `npm run render:start`
+- Health check path: `/health`
+
 ## Env
 
 - Mobile env template: `apps/mobile/.env.example` (copy to `apps/mobile/.env`)

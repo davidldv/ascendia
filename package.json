@@ -1,11 +1,16 @@
 {
   "name": "ascendia",
   "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
   "workspaces": [
     "apps/*"
   ],
   "scripts": {
     "postinstall": "patch-package",
+    "render:build": "npm ci --include=dev && npm --workspace apps/api run build",
+    "render:start": "npm --workspace apps/api run start",
     "mobile:start": "npm --workspace apps/mobile run start --",
     "mobile:android": "npm --workspace apps/mobile run android --",
     "mobile:ios": "npm --workspace apps/mobile run ios --",
