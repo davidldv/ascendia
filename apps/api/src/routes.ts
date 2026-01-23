@@ -4,12 +4,12 @@ import {
   isValidArchetypeId,
   listArchetypes,
   resolveDifficultyMultiplier,
-} from "./archetypes";
-import { requireUser } from "./auth";
-import { getEnv } from "./env";
-import { generateDailyMissions } from "./mission-engine";
-import { createAdminSupabaseClient } from "./supabase";
-import { dateKeyInTimeZone, diffDays } from "./time";
+} from "./archetypes.js";
+import { requireUser } from "./auth.js";
+import { getEnv } from "./env.js";
+import { generateDailyMissions } from "./mission-engine.js";
+import { createAdminSupabaseClient } from "./supabase.js";
+import { dateKeyInTimeZone, diffDays } from "./time.js";
 
 export type ProfileRow = {
   user_id: string;

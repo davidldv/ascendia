@@ -1,10 +1,10 @@
 import "dotenv/config";
 
-import { resolveDifficultyMultiplier } from "../archetypes";
-import { getEnv } from "../env";
-import { reconcilePastDays, type ProfileRow } from "../routes";
-import { createAdminSupabaseClient } from "../supabase";
-import { dateKeyInTimeZone } from "../time";
+import { resolveDifficultyMultiplier } from "../archetypes.js";
+import { getEnv } from "../env.js";
+import { reconcilePastDays, type ProfileRow } from "../routes.js";
+import { createAdminSupabaseClient } from "../supabase.js";
+import { dateKeyInTimeZone } from "../time.js";
 
 async function main() {
   const env = getEnv();

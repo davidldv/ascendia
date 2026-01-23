@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify";
 
-import { createAdminSupabaseClient } from "./supabase";
+import { createAdminSupabaseClient } from "./supabase.js";
 
 export type AuthedRequest = FastifyRequest & {
   user: {

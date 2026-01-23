@@ -2,8 +2,8 @@ import cors from "@fastify/cors";
 import "dotenv/config";
 import Fastify from "fastify";
 
-import { getEnv } from "./env";
-import { registerRoutes } from "./routes";
+import { getEnv } from "./env.js";
+import { registerRoutes } from "./routes.js";
 
 async function main() {
   const env = getEnv();

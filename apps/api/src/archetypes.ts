@@ -1,4 +1,4 @@
-import { createAdminSupabaseClient } from "./supabase";
+import { createAdminSupabaseClient } from "./supabase.js";
 
 export type ArchetypeTone = "strict" | "calm" | "aggressive" | "silent";
 
