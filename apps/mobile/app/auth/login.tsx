@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Redirect } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +26,7 @@ export default function LoginScreen() {
   const primary = palette.tint;
   const danger = palette.error;
 
-  const { state, startEmailOtp, verifyEmailOtp, signInWithGoogle } = useAppState();
+  const { state, startEmailOtp, verifyEmailOtp, signIn, signInWithGoogle } = useAppState();
 
   const RESEND_COOLDOWN_SECONDS = 15;
   const RATE_LIMIT_FALLBACK_SECONDS = 60;
@@ -34,6 +34,8 @@ export default function LoginScreen() {
   const [emailExpanded, setEmailExpanded] = useState(false);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'code' | 'password'>('code');
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
 
@@ -147,6 +149,29 @@ export default function LoginScreen() {
 
                 {emailExpanded ? (
                   <View className="mt-5 border-t pt-5" style={{ borderColor: palette.border }}>
+                    <View className="mb-3 flex-row gap-2">
+                      <HudButton
+                        title="Code"
+                        variant={mode === 'code' ? 'primary' : 'secondary'}
+                        disabled={state.loading}
+                        onPress={() => {
+                          setMode('code');
+                          setStep('email');
+                          setCode('');
+                        }}
+                      />
+                      <HudButton
+                        title="Password"
+                        variant={mode === 'password' ? 'primary' : 'secondary'}
+                        disabled={state.loading}
+                        onPress={() => {
+                          setMode('password');
+                          setStep('email');
+                          setCode('');
+                        }}
+                      />
+                    </View>
+
                     <HudInput
                       label="Email"
                       hint="We’ll send a 6‑digit verification code."
@@ -160,12 +185,16 @@ export default function LoginScreen() {
                         setEmail(t);
                         setStep('email');
                         setCode('');
+                        setPassword('');
                         setResendSecondsLeft(0);
                       }}
                       returnKeyType="send"
                       onSubmitEditing={async () => {
                         if (state.loading) return;
                         if (!isValidEmail) return;
+                        if (mode === 'password') {
+                          return;
+                        }
                         if (step !== 'email') return;
                         try {
                           await startEmailOtp(email.trim());
@@ -188,7 +217,19 @@ export default function LoginScreen() {
                       }}
                     />
 
-                    {step === 'code' ? (
+                    {mode === 'password' ? (
+                      <View className="mt-4">
+                        <HudInput
+                          label="Password"
+                          secureTextEntry
+                          editable={!state.loading}
+                          placeholder="••••••••"
+                          value={password}
+                          onChangeText={setPassword}
+                          returnKeyType="done"
+                        />
+                      </View>
+                    ) : step === 'code' ? (
                       <View className="mt-4">
                         <HudInput
                           label="Verification code"
@@ -204,11 +245,27 @@ export default function LoginScreen() {
 
                     <View className="mt-5">
                       <HudButton
-                        title={step === 'email' ? 'Send code' : 'Verify & continue'}
+                        title={
+                          mode === 'password'
+                            ? 'Sign in'
+                            : step === 'email'
+                              ? 'Send code'
+                              : 'Verify & continue'
+                        }
                         loading={state.loading}
-                        disabled={step === 'email' ? !isValidEmail : !isValidCode}
+                        disabled={
+                          mode === 'password'
+                            ? !isValidEmail || password.length < 8
+                            : step === 'email'
+                              ? !isValidEmail
+                              : !isValidCode
+                        }
                         onPress={async () => {
                           try {
+                            if (mode === 'password') {
+                              await signIn(email.trim(), password);
+                              return;
+                            }
                             if (step === 'email') {
                               await startEmailOtp(email.trim());
                               setStep('code');
@@ -235,7 +292,24 @@ export default function LoginScreen() {
                       />
                     </View>
 
-                    {step === 'code' ? (
+                    {mode === 'password' ? (
+                      <View className="mt-4 items-center justify-center gap-2">
+                        <ThemedText
+                          type="link"
+                          className="text-[12px] font-semibold"
+                          onPress={() => router.push('/auth/reset-password' as any)}>
+                          Forgot password?
+                        </ThemedText>
+                        <ThemedText
+                          type="link"
+                          className="text-[12px] font-semibold"
+                          onPress={() => router.push('/auth/signup' as any)}>
+                          Create an account
+                        </ThemedText>
+                      </View>
+                    ) : null}
+
+                    {mode === 'code' && step === 'code' ? (
                       <View className="mt-4 items-center justify-center gap-1">
                         {resendSecondsLeft > 0 ? (
                           <ThemedText className="text-[12px]" style={{ color: mutedText }}>

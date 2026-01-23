@@ -97,6 +97,7 @@ async function getTodayMissions(params: {
   userId: string;
   dateKey: string;
   difficultyMultiplier: number;
+  progression?: { successfulDays: number; currentStreak: number; level: number };
 }): Promise<MissionRow[]> {
   const supabase = createAdminSupabaseClient();
 
@@ -119,6 +120,7 @@ async function getTodayMissions(params: {
   const generated = generateDailyMissions({
     dateKey: params.dateKey,
     difficultyMultiplier: params.difficultyMultiplier,
+    progression: params.progression,
   });
 
   const toInsert = generated.map((m) => ({
@@ -154,6 +156,7 @@ async function ensureMissionsForDate(params: {
   userId: string;
   dateKey: string;
   difficultyMultiplier: number;
+  progression?: { successfulDays: number; currentStreak: number; level: number };
 }): Promise<MissionRow[]> {
   const supabase = createAdminSupabaseClient();
 
@@ -176,6 +179,7 @@ async function ensureMissionsForDate(params: {
   const generated = generateDailyMissions({
     dateKey: params.dateKey,
     difficultyMultiplier: params.difficultyMultiplier,
+    progression: params.progression,
   });
 
   const toInsert = generated.map((m) => ({
@@ -268,6 +272,11 @@ export async function reconcilePastDays(params: {
       userId: params.user.id,
       dateKey: cursor,
       difficultyMultiplier: params.difficultyMultiplier,
+      progression: {
+        successfulDays: profile.successful_days,
+        currentStreak: profile.current_streak,
+        level: profile.level,
+      },
     });
 
     const completed = missions.filter((m) => m.status === "completed").length;
@@ -494,6 +503,25 @@ export async function registerRoutes(app: FastifyInstance) {
     return { user, profile };
   });
 
+  app.delete("/v1/me", async (req) => {
+    const user = await requireUser(req);
+
+    const supabase = createAdminSupabaseClient();
+
+    // Deleting the auth user cascades to profiles/missions/etc via FK constraints.
+    const res = await supabase.auth.admin.deleteUser(user.id);
+
+    if (res.error) {
+      // Hide internal details but keep a useful message.
+      const err = new Error('Failed to delete account');
+      // @ts-expect-error fastify statusCode
+      err.statusCode = 500;
+      throw err;
+    }
+
+    return { ok: true };
+  });
+
   app.get("/v1/archetypes", async (req) => {
     await requireUser(req);
     const archetypes = await listArchetypes();
@@ -543,6 +571,11 @@ export async function registerRoutes(app: FastifyInstance) {
       userId: user.id,
       dateKey,
       difficultyMultiplier,
+      progression: {
+        successfulDays: reconciledProfile.successful_days,
+        currentStreak: reconciledProfile.current_streak,
+        level: reconciledProfile.level,
+      },
     });
 
     return { dateKey, missions, profile: reconciledProfile };

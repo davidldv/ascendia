@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import React, {
+import {
     createContext,
     useCallback,
     useContext,
@@ -15,8 +15,12 @@ import React, {
 import { Platform } from 'react-native';
 
 import { apiFetch, isApiError } from '@/lib/api';
-import { setAscendiaDailyNotificationsEnabled } from '@/lib/notifications';
+import {
+  type AscendiaNotificationTemplates,
+  setAscendiaDailyNotificationsEnabled,
+} from '@/lib/notifications';
 import { clearSupabaseAuthStorage, supabase } from '@/lib/supabase';
+import { getArchetypeById } from '@/constants/archetypes';
 import type { MissionStatus, MissionType } from '@/types/domain';
 
 const NOTIFICATIONS_ENABLED_KEY = 'ascendia.notifications.enabled';
@@ -62,6 +66,7 @@ type AppStateApi = {
   startEmailOtp: (email: string) => Promise<void>;
   verifyEmailOtp: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refresh: () => Promise<void>;
   setTimezoneIfNeeded: () => Promise<void>;
   setArchetype: (archetypeId: string) => Promise<void>;
@@ -110,6 +115,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [missionsToday, setMissionsToday] = useState<ApiMission[]>([]);
   const [last7Days, setLast7Days] = useState<ProgressDay[]>([]);
   const [notificationsEnabled, setNotificationsEnabledState] = useState<boolean>(true);
+  const [archetypeTemplates, setArchetypeTemplates] = useState<
+    AscendiaNotificationTemplates | undefined
+  >(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -288,12 +296,74 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   }, [session, refresh]);
 
   useEffect(() => {
+    // Fetch templates once per archetype (server is source-of-truth), fall back to
+    // bundled constants if the table/column isn't available.
+    if (!session) {
+      setArchetypeTemplates(undefined);
+      return;
+    }
+    if (!profile?.archetypeId) {
+      setArchetypeTemplates(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    const fallback = getArchetypeById(profile.archetypeId)?.messageTemplates;
+
+    (async () => {
+      try {
+        const res = await apiFetch<{ archetypes: any[] }>(session, '/v1/archetypes');
+        const match = Array.isArray(res.archetypes)
+          ? res.archetypes.find((a) => a?.id === profile.archetypeId)
+          : null;
+
+        const mt = match?.messageTemplates ?? match?.message_templates;
+        const next: AscendiaNotificationTemplates | undefined =
+          mt && typeof mt === 'object'
+            ? {
+                missionAssigned:
+                  typeof (mt as any).missionAssigned === 'string'
+                    ? (mt as any).missionAssigned
+                    : undefined,
+                eveningReminder:
+                  typeof (mt as any).eveningReminder === 'string'
+                    ? (mt as any).eveningReminder
+                    : undefined,
+                midnightFailure:
+                  typeof (mt as any).midnightFailure === 'string'
+                    ? (mt as any).midnightFailure
+                    : undefined,
+              }
+            : fallback;
+
+        if (!cancelled) setArchetypeTemplates(next ?? fallback);
+      } catch {
+        if (!cancelled) setArchetypeTemplates(fallback);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, profile?.archetypeId]);
+
+  useEffect(() => {
     // Schedule daily local notifications once the user is signed in and has
     // selected a mentor (so onboarding is done). Time is automatic via timezone.
     if (!session) return;
     if (!profile?.archetypeId) return;
-    void setAscendiaDailyNotificationsEnabled(notificationsEnabled);
-  }, [session, profile?.archetypeId, notificationsEnabled]);
+    const allComplete =
+      missionsToday.length > 0 && missionsToday.every((m) => m.status === 'completed');
+
+    const templates = archetypeTemplates ?? getArchetypeById(profile.archetypeId)?.messageTemplates;
+
+    void setAscendiaDailyNotificationsEnabled(notificationsEnabled, {
+      templates,
+      todayDateKey,
+      todayComplete: allComplete,
+      horizonDays: 7,
+    });
+  }, [session, profile?.archetypeId, notificationsEnabled, missionsToday, todayDateKey, archetypeTemplates]);
 
   const setNotificationsEnabled = useCallback(
     async (enabled: boolean) => {
@@ -305,10 +375,20 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       }
       // If user disables, cancel immediately; if enables, schedule.
       if (session && profile?.archetypeId) {
-        await setAscendiaDailyNotificationsEnabled(enabled);
+        const allComplete =
+          missionsToday.length > 0 && missionsToday.every((m) => m.status === 'completed');
+        const templates =
+          archetypeTemplates ?? getArchetypeById(profile.archetypeId)?.messageTemplates;
+
+        await setAscendiaDailyNotificationsEnabled(enabled, {
+          templates,
+          todayDateKey,
+          todayComplete: allComplete,
+          horizonDays: 7,
+        });
       }
     },
-    [session, profile?.archetypeId]
+    [session, profile?.archetypeId, missionsToday, todayDateKey, archetypeTemplates]
   );
 
   const signUp = useCallback(
@@ -478,6 +558,23 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     await forceSignOut();
   }, [forceSignOut]);
 
+  const deleteAccount = useCallback(async () => {
+    if (!session) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await apiFetch<{ ok: true }>(session, '/v1/me', { method: 'DELETE' });
+      await setAscendiaDailyNotificationsEnabled(false);
+      await forceSignOut();
+    } catch (e) {
+      if (await maybeHandleUnauthorized(e)) return;
+      setError(e instanceof Error ? e.message : String(e));
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, [session, maybeHandleUnauthorized, forceSignOut]);
+
   const setArchetype = useCallback(
     async (archetypeId: string) => {
       if (!session) return;
@@ -554,6 +651,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       startEmailOtp,
       verifyEmailOtp,
       signOut,
+      deleteAccount,
       refresh,
       setTimezoneIfNeeded,
       setArchetype,
@@ -569,6 +667,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       startEmailOtp,
       verifyEmailOtp,
       signOut,
+      deleteAccount,
       refresh,
       setTimezoneIfNeeded,
       setArchetype,

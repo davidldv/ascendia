@@ -63,12 +63,43 @@ function roundTarget(type: MissionType, value: number): number {
   return Math.max(5, Math.round(value / 5) * 5);
 }
 
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
+}
+
+function computeProgressionMultiplier(params?: {
+  successfulDays?: number;
+  currentStreak?: number;
+  level?: number;
+}): number {
+  if (!params) return 1.0;
+
+  const successfulDays = Math.max(0, Number(params.successfulDays ?? 0));
+  const currentStreak = Math.max(0, Number(params.currentStreak ?? 0));
+  const level = Math.max(1, Number(params.level ?? 1));
+
+  // Slow, user-based progression:
+  // - successfulDays is the primary driver (caps at +35%)
+  // - currentStreak provides a small momentum bonus (caps at +10%)
+  // - level provides a tiny smoothing factor (caps at +10%)
+  const bySuccessfulDays = 1 + clamp(successfulDays * 0.01, 0, 0.35);
+  const byStreak = 1 + clamp(currentStreak * 0.005, 0, 0.1);
+  const byLevel = 1 + clamp((level - 1) * 0.01, 0, 0.1);
+
+  return clamp(bySuccessfulDays * byStreak * byLevel, 0.9, 1.6);
+}
+
 export function generateDailyMissions(params: {
   dateKey: string;
   difficultyMultiplier: number;
   count?: number;
+  progression?: {
+    successfulDays?: number;
+    currentStreak?: number;
+    level?: number;
+  };
 }): Array<{ type: MissionType; targetValue: number }> {
-  const { dateKey, difficultyMultiplier, count = 4 } = params;
+  const { dateKey, difficultyMultiplier, count = 4, progression } = params;
 
   const rng = mulberry32(hashStringToSeed(dateKey));
   const chosen = pickUnique(
@@ -77,15 +108,18 @@ export function generateDailyMissions(params: {
     Math.min(5, Math.max(3, count)),
   );
 
-  const gentleRamp =
-    1 + ((hashStringToSeed(`ramp:${dateKey}`) % 365) / 365) * 0.25;
+  // Keep a tiny date-based wobble (prevents flat targets across long stretches),
+  // but make the primary increase depend on the user's progression.
+  const gentleRamp = 1 + ((hashStringToSeed(`ramp:${dateKey}`) % 365) / 365) * 0.08;
+  const progressionMultiplier = computeProgressionMultiplier(progression);
+  const effectiveMultiplier = difficultyMultiplier * progressionMultiplier;
 
   return chosen.map((type) => {
     const base = baseTargetFor(type);
     const noise = 0.9 + rng() * 0.2;
     const targetValue = roundTarget(
       type,
-      base * difficultyMultiplier * gentleRamp * noise,
+      base * effectiveMultiplier * gentleRamp * noise,
     );
 
     return { type, targetValue };

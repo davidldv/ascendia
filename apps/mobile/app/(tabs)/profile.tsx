@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
     Alert,
     Platform,
@@ -46,7 +46,9 @@ export default function ProfileScreen() {
   const palette = Colors[themeName];
   const tint = palette.tint;
 
-  const { state, refresh, signOut, setNotificationsEnabled } = useAppState();
+  const { state, refresh, signOut, deleteAccount, setNotificationsEnabled } = useAppState();
+
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const profile = state.profile;
   const archetype = getArchetypeById(profile?.archetypeId ?? null);
@@ -79,6 +81,43 @@ export default function ProfileScreen() {
     Alert.alert('Sign out?', 'You can sign back in any time.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
+    ]);
+  };
+
+  const requestDeleteAccount = () => {
+    const msg =
+      'This permanently deletes your account and all progress. This cannot be undone.';
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const ok1 = window.confirm(`Delete account?\n\n${msg}`);
+      if (!ok1) return;
+      const ok2 = window.confirm('Final confirmation: delete your account now?');
+      if (ok2) {
+        setDeletingAccount(true);
+        void deleteAccount().finally(() => setDeletingAccount(false));
+      }
+      return;
+    }
+
+    Alert.alert('Delete account?', msg, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Continue',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Final confirmation', 'Delete your account now?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete',
+              style: 'destructive',
+              onPress: () => {
+                setDeletingAccount(true);
+                void deleteAccount().finally(() => setDeletingAccount(false));
+              },
+            },
+          ]);
+        },
+      },
     ]);
   };
 
@@ -187,9 +226,6 @@ export default function ProfileScreen() {
                   </ThemedText>
                   <ThemedText type="defaultSemiBold" style={{ color: palette.textStrong }}>
                     {profile?.email ?? '—'}
-                  </ThemedText>
-                  <ThemedText className="text-[13px] opacity-75">
-                    Timezone: {profile?.timezone ?? 'UTC'}
                   </ThemedText>
                 </View>
               </View>
@@ -367,6 +403,19 @@ export default function ProfileScreen() {
             }}
             left={<Ionicons name="log-out-outline" size={18} color={palette.textStrong} />}
             right={<Ionicons name="chevron-forward" size={18} color={palette.iconMuted} />}
+            containerStyle={{}}
+          />
+
+          <HudButton
+            title="Delete account"
+            variant="secondary"
+            disabled={state.loading || deletingAccount}
+            loading={deletingAccount}
+            onPress={() => {
+              requestDeleteAccount();
+            }}
+            left={<Ionicons name="trash-outline" size={18} color={palette.error} />}
+            right={<Ionicons name="warning-outline" size={18} color={palette.error} />}
             containerStyle={{}}
           />
 

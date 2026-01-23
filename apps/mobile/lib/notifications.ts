@@ -5,6 +5,18 @@ const SOURCE = 'ascendia';
 
 let handlerInitialized = false;
 
+export type AscendiaNotificationTemplates = {
+  missionAssigned?: string;
+  eveningReminder?: string;
+  midnightFailure?: string;
+};
+
+const DEFAULT_TEMPLATES: Required<AscendiaNotificationTemplates> = {
+  missionAssigned: 'Open Ascendia. Your missions are waiting.',
+  eveningReminder: 'If today’s missions aren’t done yet, finish them now.',
+  midnightFailure: 'Day closes now. Incomplete missions count as failure.',
+};
+
 type NotificationsModule = typeof import('expo-notifications');
 let notificationsPromise: Promise<NotificationsModule> | null = null;
 
@@ -65,12 +77,19 @@ export async function scheduleDailyLocalNotifications(params?: {
   eveningMinute?: number;
   failureHour?: number;
   failureMinute?: number;
+  templates?: AscendiaNotificationTemplates;
+  todayDateKey?: string | null;
+  todayComplete?: boolean;
+  horizonDays?: number;
 }) {
   const Notifications = await getNotifications();
   if (!Notifications) return;
 
-  await ensureNotificationHandlerInitialized(Notifications);
-  await ensureAndroidChannel(Notifications);
+  // TypeScript doesn't reliably narrow captured variables inside nested functions.
+  const NotificationsApi: NotificationsModule = Notifications;
+
+  await ensureNotificationHandlerInitialized(NotificationsApi);
+  await ensureAndroidChannel(NotificationsApi);
 
   const granted = await requestNotificationsPermissionIfNeeded();
   if (!granted) return;
@@ -82,55 +101,117 @@ export async function scheduleDailyLocalNotifications(params?: {
     eveningMinute = 0,
     failureHour = 0,
     failureMinute = 5,
+    templates,
+    todayDateKey,
+    todayComplete,
+    horizonDays = 7,
   } = params ?? {};
+
+  const copy = {
+    missionAssigned: templates?.missionAssigned ?? DEFAULT_TEMPLATES.missionAssigned,
+    eveningReminder: templates?.eveningReminder ?? DEFAULT_TEMPLATES.eveningReminder,
+    midnightFailure: templates?.midnightFailure ?? DEFAULT_TEMPLATES.midnightFailure,
+  };
 
   // Prevent duplicates: cancel only Ascendia reminders then re-schedule.
   await cancelAscendiaScheduledNotifications();
 
-  await Notifications.scheduleNotificationAsync({
+  await NotificationsApi.scheduleNotificationAsync({
     content: {
       title: 'Ascendia — missions assigned',
-      body: 'Open Ascendia. Your missions are waiting.',
+      body: copy.missionAssigned,
       sound: false,
       data: { source: SOURCE, kind: 'morning' },
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      type: NotificationsApi.SchedulableTriggerInputTypes.DAILY,
       hour: morningHour,
       minute: morningMinute,
       channelId: CHANNEL_ID,
     },
   });
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Ascendia — reminder',
-      body: 'If today’s missions aren’t done yet, finish them now.',
-      sound: false,
-      data: { source: SOURCE, kind: 'evening' },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: eveningHour,
-      minute: eveningMinute,
-      channelId: CHANNEL_ID,
-    },
-  });
+  function parseDateKeyLocal(key: string): { year: number; month: number; day: number } | null {
+    const m = /^\d{4}-\d{2}-\d{2}$/.exec(key);
+    if (!m) return null;
+    const [y, mo, d] = key.split('-').map((x) => Number(x));
+    if (!y || !mo || !d) return null;
+    return { year: y, month: mo, day: d };
+  }
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Ascendia — day closes',
-      body: 'Day closes now. Incomplete missions count as failure.',
-      sound: false,
-      data: { source: SOURCE, kind: 'midnight' },
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: failureHour,
-      minute: failureMinute,
-      channelId: CHANNEL_ID,
-    },
-  });
+  function formatDateKeyLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function addDaysLocal(dateKey: string, days: number): string {
+    const parsed = parseDateKeyLocal(dateKey);
+    if (!parsed) return dateKey;
+    const base = new Date(parsed.year, parsed.month - 1, parsed.day);
+    base.setDate(base.getDate() + days);
+    return formatDateKeyLocal(base);
+  }
+
+  async function scheduleOneOff(params: {
+    dateKey: string;
+    kind: 'evening' | 'midnight';
+    title: string;
+    body: string;
+    hour: number;
+    minute: number;
+  }) {
+    const parsed = parseDateKeyLocal(params.dateKey);
+    if (!parsed) return;
+
+    const when = new Date(parsed.year, parsed.month - 1, parsed.day, params.hour, params.minute, 0);
+    if (when.getTime() <= Date.now() + 30_000) return;
+
+    const trigger = {
+      date: when,
+      // We schedule one-off reminders so we can cancel them when the user finishes the day.
+      // Calendar triggers are supported on iOS/Android; for other platforms we already early-return.
+    } as const;
+
+    await NotificationsApi.scheduleNotificationAsync({
+      content: {
+        title: params.title,
+        body: params.body,
+        sound: false,
+        data: { source: SOURCE, kind: params.kind, dateKey: params.dateKey },
+      },
+      // @ts-expect-error expo-notifications typing variance across SDKs
+      trigger,
+    });
+  }
+
+  const baseKey = typeof todayDateKey === 'string' && todayDateKey ? todayDateKey : null;
+  if (baseKey) {
+    for (let i = 0; i < Math.max(1, horizonDays); i += 1) {
+      const dateKey = addDaysLocal(baseKey, i);
+      const skipToday = i === 0 && todayComplete === true;
+      if (skipToday) continue;
+
+      await scheduleOneOff({
+        dateKey,
+        kind: 'evening',
+        title: 'Ascendia — reminder',
+        body: copy.eveningReminder,
+        hour: eveningHour,
+        minute: eveningMinute,
+      });
+
+      await scheduleOneOff({
+        dateKey,
+        kind: 'midnight',
+        title: 'Ascendia — day closes',
+        body: copy.midnightFailure,
+        hour: failureHour,
+        minute: failureMinute,
+      });
+    }
+  }
 }
 
 export async function cancelAscendiaScheduledNotifications(): Promise<void> {
@@ -151,10 +232,23 @@ export async function cancelAscendiaScheduledNotifications(): Promise<void> {
   }
 }
 
-export async function setAscendiaDailyNotificationsEnabled(enabled: boolean): Promise<void> {
+export async function setAscendiaDailyNotificationsEnabled(
+  enabled: boolean,
+  params?: {
+    templates?: AscendiaNotificationTemplates;
+    todayDateKey?: string | null;
+    todayComplete?: boolean;
+    horizonDays?: number;
+  }
+): Promise<void> {
   if (!enabled) {
     await cancelAscendiaScheduledNotifications();
     return;
   }
-  await scheduleDailyLocalNotifications();
+  await scheduleDailyLocalNotifications({
+    templates: params?.templates,
+    todayDateKey: params?.todayDateKey,
+    todayComplete: params?.todayComplete,
+    horizonDays: params?.horizonDays,
+  });
 }
